@@ -1,0 +1,31 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww24300\viewh11100\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # Thesis (reproduced): The Technological Legacy of the Cold War\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 # Reproducible implementation of the analysis from my master\'92s thesis: IV estimate of the causal effect of county-level US Military procurement during the Cold War on county-level innovation.\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+## What this repo contains\
+- `data/cleaned.csv` \'97 cleaned dataset used in the main analysis (or `cleaned_sample.csv` if full dataset is too large). See `data/DATA_DICTIONARY.md`.\
+- `notebooks/01-main-analysis.ipynb` \'97 runnable notebook that reproduces the headline specification, tables and figure.\
+- `scripts/run_main_analysis.py` \'97 script version to reproduce results non-interactively.\
+- `results/main_table.csv` and `results/main_figure.png` \'97 exported outputs for quick inspection.\
+- `appendix/` \'97 other specifications and robustness checks.\
+\
+## Key result \
+- Main IV estimate: elasticity of 1% significant at 1%\
+\
+## How to run \
+```bash\
+git clone https://github.com/<you>/thesis-causal-python.git\
+cd thesis-causal-python\
+python -m venv .venv && source .venv/bin/activate\
+pip install -r requirements.txt\
+# run notebook interactively OR\
+python scripts/run_main_analysis.py --data data/cleaned.csv --out results/main_table.csv}

@@ -7,10 +7,8 @@
 
 \f0\fs24 \cf0 # Thesis (reproduced): The Technological Legacy of the Cold War\
 \
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 # Reproducible implementation of the analysis from my master\'92s thesis: IV estimate of the causal effect of county-level US Military procurement during the Cold War on county-level innovation.\
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
-\cf0 \
+# Reproducible implementation of the analysis from my master\'92s thesis: IV estimate of the causal effect of county-level US Military procurement during the Cold War on county-level innovation.\
+\
 ## What this repo contains\
 - `data/cleaned.csv` \'97 cleaned dataset used in the main analysis (or `cleaned_sample.csv` if full dataset is too large). See `data/DATA_DICTIONARY.md`.\
 - `notebooks/01-main-analysis.ipynb` \'97 runnable notebook that reproduces the headline specification, tables and figure.\
@@ -22,10 +20,24 @@
 - Main IV estimate: elasticity of 1% significant at 1%\
 \
 ## How to run \
+\
 ```bash\
 git clone https://github.com/<you>/thesis-causal-python.git\
 cd thesis-causal-python\
 python -m venv .venv && source .venv/bin/activate\
 pip install -r requirements.txt\
+\
 # run notebook interactively OR\
-python scripts/run_main_analysis.py --data data/cleaned.csv --out results/main_table.csv}
+\
+# DiD exploration\
+python scripts/run_exploratory_did.py \\\
+  --built data/built.dta \\\
+  --merge data/defcon_patent_merge_county_year_final.dta \\\
+  --out_table results/exploratory_did_table.csv \\\
+  --out_fig figures/event_study/trendplot_cit_final.png\
+\
+# Main IV specs\
+python scripts/run_main_iv.py --data data/built5.dta --out_prefix results/main_results_6676\
+\
+# Heterogeneity\
+python scripts/run_heterogeneity.py --data data/built5.dta --out_prefix results/hhi}

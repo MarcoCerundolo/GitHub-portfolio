@@ -1,5 +1,3 @@
-Packages to Install
-
 pandas
 numpy
 matplotlib

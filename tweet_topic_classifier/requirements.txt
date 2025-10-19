@@ -1,0 +1,8 @@
+openai>=1.30
+pandas>=2.1
+numpy>=1.24
+scikit-learn>=1.3
+transformers>=4.39
+tensorflow>=2.13
+matplotlib>=3.7
+seaborn>=0.13

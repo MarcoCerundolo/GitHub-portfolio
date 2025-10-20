@@ -2,7 +2,7 @@
 
 ## Overview 
 
-This project builds a multi-class topic classifier for Tweets using a weak-supervision approach. I used a large language model (ChatGPT) to automatically label 100,000 tweets across 20 custom-defined topics, then distilled the knowledge into a fine-tuned BERT model. Final performance was evaluated on a human-labeled dataset.
+This project builds a multi-class topic classifier for Tweets using a weak-supervision approach. I used a large language model (ChatGPT) to automatically label 100,000 tweets across 19 custom-defined topics, then distilled the knowledge into a fine-tuned BERT model. Final performance was evaluated on a human-labeled dataset.
 
 ## Key Features
 

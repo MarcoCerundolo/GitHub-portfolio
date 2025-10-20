@@ -48,7 +48,7 @@ For each topic I randomly sampled 15 tweets, from the classified final dataset, 
 ## Results & Insights
 
 - The fine-tuned BERT model, as detailed in the [model evaluation report](reports/model_evaluation.pdf), reaches **Micro F1 0.775**, **Macro F1 0.788**, and **Subset Accuracy 0.498** on the 285-tweet human-labeled set, with Micro Precision/Recall at 0.689/0.886.
-- 
+
 - Policy-focused topics such as Public Health (F1 0.952), Taxation (0.941), and Labour Market (0.878) exhibit high precision and recall, while broader narratives like Anti-Establishment (F1 0.676) and Civil Rights (0.627) lean heavily on recall and highlight where additional precision-focused examples would help ([model evaluation report](reports/model_evaluation.pdf)).
   
 - The [topic frequency overview](reports/topic_frequency.pdf) charts the distribution across all 20 topics (plus a `no_topic` catch-all) over the 3.7M tweet corpus, underscoring the class imbalance with counts on the order of 10^6 tweets for the largest categories.

@@ -58,11 +58,11 @@ For each topic I randomly sampled 15 tweets, from the classified final dataset, 
 ```
 tweet_topic_classifier/
 ├── data/
-│   ├── raw/          # Only contains sample of source tweets 
+│   ├── raw/           # Only contains sample of source tweets 
 │   ├── interim/   
 │   └── processed/    
-├── models/           # Saved BERT checkpoints
-├── reports/          # Summary PDFs
+├── models/            # Saved BERT checkpoints
+├── reports/           # Summary PDFs
 ├── src/tweet_classifier/
 │   ├── gpt_label_tweets.py
 │   ├── build_dummy_labels.py

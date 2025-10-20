@@ -39,31 +39,19 @@ I defined 19 topic categories and then used ChatGPT with a structured prompt to 
 ## Model Architecture
 
 Base model: bert-base-uncased
-Why BERT / transformer?
-Fine-tuning approach (train/val split, hyperparameters)
-Handling class imbalance (e.g. class weighting, sampling)
+To avoid overfitting I use early stopping with a patience of 3 epochs.
 
 ## Evaluation Method
 
-Two-stage evaluation (very impressive):
-Internal: BERT performance vs. LLM labels
-External: Final evaluation on human-labeled gold set (~200 tweets)
-Metrics:
-Accuracy
-Macro F1 (important for class imbalance)
-Per-class precision / recall
-Confusion matrix
-Qualitative error analysis (optional)
+For each topic I randomly sampled 15 tweets, from the classified final dataset, creating a dataset of 285 tweets. Note that since a tweet can have multiple topics this mean that the dataset has at least 15 tweets for each topic. I then manually labelled the topics for these tweets. I use this manual dataset to compute the confusion matrix for each topic and calculate a range of key metrics.
 
 ## Results & Insights
 
-The fine-tuned BERT model achieved:
-
-- **Macro F1:** 0.788
-
-![Model Evaluation](reports/model_evaluation)
-
-![Topic Frequency](reports/topic_frequency.pdf)
+- The fine-tuned BERT model, as detailed in the [model evaluation report](reports/model_evaluation.pdf), reaches **Micro F1 0.775**, **Macro F1 0.788**, and **Subset Accuracy 0.498** on the 285-tweet human-labeled set, with Micro Precision/Recall at 0.689/0.886.
+- 
+- Policy-focused topics such as Public Health (F1 0.952), Taxation (0.941), and Labour Market (0.878) exhibit high precision and recall, while broader narratives like Anti-Establishment (F1 0.676) and Civil Rights (0.627) lean heavily on recall and highlight where additional precision-focused examples would help ([model evaluation report](reports/model_evaluation.pdf)).
+  
+- The [topic frequency overview](reports/topic_frequency.pdf) charts the distribution across all 20 topics (plus a `no_topic` catch-all) over the 3.7M tweet corpus, underscoring the class imbalance with counts on the order of 10^6 tweets for the largest categories.
 
 ## Directory Overview
 
@@ -166,6 +154,5 @@ python3 src/tweet_classifier/evaluate_model_performance.py \
 ```
 
 This script computes aggregate metrics (micro/macro precision, recall, F1, subset accuracy) and per-topic scores, then compiles the results alongside confusion matrices for every topic into a clean PDF.
-
 
 

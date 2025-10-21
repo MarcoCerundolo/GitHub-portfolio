@@ -1,15 +1,34 @@
-"""Create dummy topic columns from the GPT-labelled dataset."""
+"This script transforms the string output from chatgpt into a set of 19 dummies."
 
-from __future__ import annotations
-
-import argparse
-import ast
-from pathlib import Path
-from typing import Dict, List
-
+import sys
+import os
 import pandas as pd
 
-TOPICS = [
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+log_file = open(os.path.join(LOGS_DIR, "build_dummy_labels.log"), "a")
+error_log_file = open(os.path.join(LOGS_DIR, "build_dummy_labels_error.log"), "a")
+
+sys.stdout = log_file
+sys.stderr = error_log_file
+
+print("Starting dummy label generation")
+sys.stdout.flush()
+
+
+def read_csv_from_local(filename):
+    return pd.read_csv(filename, engine="python")
+
+
+if __name__ == "__main__":
+    filename = os.path.join(PROCESSED_DIR, "labelled_tweets_100000.csv")
+    df = read_csv_from_local(filename)
+    print(df.head())
+
+topics = [
     "immigration",
     "climate change",
     "renewable energy",
@@ -32,62 +51,22 @@ TOPICS = [
 ]
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Expand GPT topic predictions into dummy variables.")
-    parser.add_argument(
-        "--input",
-        default=Path("data/processed/labelled_tweets.csv"),
-        type=Path,
-        help="CSV containing the GPT-labelled tweets.",
-    )
-    parser.add_argument(
-        "--output",
-        default=Path("data/processed/gpt_dummy_labels.csv"),
-        type=Path,
-        help="Destination CSV with dummy topic columns.",
-    )
-    return parser.parse_args()
+def generate_dummies(text):
+    dummies = {topic: 0 for topic in topics}
+    for topic in topics:
+        if topic in text:
+            dummies[topic] = 1
+    return dummies
 
 
-def parse_topics(raw_value: str) -> List[str]:
-    if not isinstance(raw_value, str):
-        return []
-    cleaned = raw_value.strip()
-    if not cleaned:
-        return []
-    try:
-        loaded = ast.literal_eval(cleaned)
-        if isinstance(loaded, list):
-            return [str(item).strip().lower() for item in loaded]
-    except (ValueError, SyntaxError):
-        pass
-    return [token.strip().lower() for token in cleaned.split(",") if token.strip()]
+dummy_df = df["gpt_finetuned"].apply(generate_dummies).apply(pd.Series)
+df = pd.concat([df, dummy_df], axis=1)
 
+output_path = os.path.join(PROCESSED_DIR, "gpt_dummy_labels_100000.csv")
+df.to_csv(output_path)
 
-def create_dummy_columns(label_strings: pd.Series) -> pd.DataFrame:
-    rows: List[Dict[str, int]] = []
-    for value in label_strings:
-        topics = {topic: 0 for topic in TOPICS}
-        parsed = parse_topics(value)
-        for topic in parsed:
-            if topic in topics:
-                topics[topic] = 1
-        rows.append(topics)
-    return pd.DataFrame(rows)
-
-
-def main() -> None:
-    args = parse_args()
-    df = pd.read_csv(args.input)
-    if "gpt_finetuned" not in df.columns:
-        raise KeyError("Expected 'gpt_finetuned' column with GPT output.")
-
-    dummy_df = create_dummy_columns(df["gpt_finetuned"])
-    combined = pd.concat([df, dummy_df], axis=1)
-
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    combined.to_csv(args.output, index=False)
-
-
-if __name__ == "__main__":
-    main()
+log_file.close()
+error_log_file.close()
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+print(f"Saved dummy labels to {output_path}")

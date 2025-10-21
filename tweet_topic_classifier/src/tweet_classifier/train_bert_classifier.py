@@ -1,19 +1,146 @@
-"""Fine-tune a BERT model on GPT-labelled tweets."""
+"""
+Uses the 100,000 tweets with associated dummies to train BERT. 
+The model gets trained on 4/5 of the tweets and gets evaluated on 1/5 of the tweets.
+From this collection of tweets which get withheld, the model gets evaluated and a confusion matrix is produced for each topic, to show how well the model has learnt the chatgpt classification. Notice that this is not really want we are interested in because the chatgpt classification is noisy.
+The code also produces a dataset ‘comparison.csv’ which allows you to browse the classification to see if it makes sense. Later we evaluate the model on a human labelled sample."
+"""
 
-from __future__ import annotations
-
-import argparse
-import logging
-from pathlib import Path
-from typing import List
-
-import numpy as np
+import sys
+import os
 import pandas as pd
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from transformers import BertTokenizer, TFBertForSequenceClassification
 
-TOPICS = [
+import tensorflow as tf
+from transformers import BertTokenizer, TFBertForSequenceClassification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MultiLabelBinarizer
+import numpy as np
+import io
+from sklearn.metrics import precision_score, recall_score, f1_score
+import time
+
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.backends.backend_pdf import PdfPages
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+REPORTS_DIR = os.path.join(BASE_DIR, "reports")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+os.makedirs(LOGS_DIR, exist_ok=True)
+os.makedirs(MODELS_DIR, exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+log_file = open(os.path.join(LOGS_DIR, "train_bert_classifier.log"), "a")
+error_log_file = open(os.path.join(LOGS_DIR, "train_bert_classifier_error.log"), "a")
+
+sys.stdout = log_file
+sys.stderr = error_log_file
+
+print("This will be logged in train_bert_classifier.log")
+sys.stdout.flush()
+
+df = pd.read_csv(os.path.join(PROCESSED_DIR, "gpt_dummy_labels_100000.csv"))
+
+df = df.drop([df.columns[0], "gpt_finetuned"], axis=1)
+
+df = df.rename(columns={"text_translate": "tweet"})
+
+df["labels"] = df[
+    [
+        "immigration",
+        "climate change",
+        "renewable energy",
+        "traditional energy",
+        "inequality",
+        "social policy",
+        "taxation",
+        "labour market",
+        "international trade",
+        "economics",
+        "european union",
+        "public health",
+        "gender rights",
+        "civil rights",
+        "political rights",
+        "connecting",
+        "elections/voting",
+        "self-promotion",
+        "anti-establishment",
+    ]
+].values.tolist()
+
+train_df, test_df = train_test_split(df, test_size=0.2, random_state=42)
+
+train_labels = list(train_df["labels"])
+test_labels = list(test_df["labels"])
+
+tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
+
+train_encodings = tokenizer(list(train_df["tweet"].values), truncation=False, padding=False)
+test_encodings = tokenizer(list(test_df["tweet"].values), truncation=False, padding=False)
+
+max_length = max([len(seq) for seq in train_encodings["input_ids"]] + [len(seq) for seq in test_encodings["input_ids"]])
+
+train_encodings = tokenizer(list(train_df["tweet"].values), truncation=True, padding="max_length", max_length=max_length)
+test_encodings = tokenizer(list(test_df["tweet"].values), truncation=True, padding="max_length", max_length=max_length)
+
+
+def convert_to_tf_dataset(encodings, labels):
+    dataset = tf.data.Dataset.from_tensor_slices((dict(encodings), labels))
+    return dataset
+
+
+train_dataset = convert_to_tf_dataset(train_encodings, train_labels)
+test_dataset = convert_to_tf_dataset(test_encodings, test_labels)
+
+train_dataset = train_dataset.shuffle(100).batch(32).prefetch(tf.data.experimental.AUTOTUNE)
+test_dataset = test_dataset.batch(32).prefetch(tf.data.experimental.AUTOTUNE)
+
+model = TFBertForSequenceClassification.from_pretrained("bert-large-uncased", num_labels=19)
+
+optimizer = tf.keras.optimizers.Adam(learning_rate=5e-5, epsilon=1e-08)
+loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+metric1 = tf.keras.metrics.BinaryAccuracy("accuracy")
+metric2 = tf.keras.metrics.Recall()
+metric3 = tf.keras.metrics.Precision()
+
+model.compile(optimizer=optimizer, loss=loss, metrics=[metric1, metric2, metric3])
+
+early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=5, restore_best_weights=True)
+
+history = model.fit(train_dataset, epochs=25, validation_data=test_dataset, callbacks=[early_stopping])
+
+results = model.evaluate(test_dataset)
+
+print(f"loss: {results[0]}")
+print(f"accuracy: {results[1]}")
+print(f"recall: {results[2]}")
+print(f"precision: {results[3]}")
+
+model_path = os.path.join(MODELS_DIR, "model_100000")
+tokenizer_path = os.path.join(MODELS_DIR, "tokenizer_100000")
+
+model.save_pretrained(model_path)
+tokenizer.save_pretrained(tokenizer_path)
+
+test_pred_logit = model.predict(test_dataset).logits
+test_pred_prob = tf.nn.sigmoid(test_pred_logit).numpy()
+test_pred_labels = (test_pred_prob > 0.5).astype(int)
+
+actual_labels = np.array([label for label in test_labels])
+
+comparison_df = pd.DataFrame(
+    {
+        "tweet": list(test_df["tweet"].values),
+        "actual_labels": list(actual_labels),
+        "predicted_labels": list(test_pred_labels),
+        "predicted_probs": list(test_pred_prob),
+    }
+)
+
+topic_names = [
     "immigration",
     "climate change",
     "renewable energy",
@@ -35,142 +162,31 @@ TOPICS = [
     "anti-establishment",
 ]
 
+actual_df = pd.DataFrame(comparison_df["actual_labels"].tolist(), columns=[f"{topic}_actual" for topic in topic_names])
+predicted_df = pd.DataFrame(comparison_df["predicted_labels"].tolist(), columns=[f"{topic}_predicted" for topic in topic_names])
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fine-tune BERT on GPT-labelled tweets.")
-    parser.add_argument(
-        "--input",
-        default=Path("data/processed/gpt_dummy_labels.csv"),
-        type=Path,
-        help="CSV with GPT labels and dummy topic columns.",
-    )
-    parser.add_argument(
-        "--model-dir",
-        default=Path("models/bert_topic_classifier"),
-        type=Path,
-        help="Output directory for the saved model and tokenizer.",
-    )
-    parser.add_argument(
-        "--reports-dir",
-        default=Path("reports"),
-        type=Path,
-        help="Directory where evaluation artefacts will be stored.",
-    )
-    parser.add_argument("--epochs", type=int, default=5, help="Training epochs.")
-    parser.add_argument("--batch-size", type=int, default=16, help="Batch size for training.")
-    parser.add_argument("--learning-rate", type=float, default=5e-5, help="Adam learning rate.")
-    return parser.parse_args()
+comparison_df = pd.concat([comparison_df, actual_df, predicted_df], axis=1)
+comparison_df = comparison_df.drop(columns=["actual_labels", "predicted_labels"])
 
+comparison_path = os.path.join(PROCESSED_DIR, "comparison_100000.csv")
+comparison_df.to_csv(comparison_path, index=False)
 
-def configure_logging() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-    )
+with PdfPages(os.path.join(REPORTS_DIR, "confusion_matrices_100000.pdf")) as pdf:
+    for topic in topic_names:
+        actual = comparison_df[f"{topic}_actual"]
+        predicted = comparison_df[f"{topic}_predicted"]
+        conf_matrix = confusion_matrix(actual, predicted)
+        conf_matrix_normalized = conf_matrix / conf_matrix.sum()
+        plt.figure(figsize=(5, 4))
+        sns.heatmap(conf_matrix_normalized, annot=True, fmt=".2%", cmap="Blues", cbar=False)
+        plt.title(f"Confusion Matrix for {topic}")
+        plt.xlabel("Predicted Label")
+        plt.ylabel("Actual Label")
+        pdf.savefig()
+        plt.close()
 
-
-def prepare_labels(df: pd.DataFrame) -> List[List[int]]:
-    return df[TOPICS].astype(int).values.tolist()
-
-
-def build_dataset(tokenizer: BertTokenizer, texts: List[str], labels: List[List[int]] | None, batch_size: int) -> tf.data.Dataset:
-    encodings = tokenizer(
-        texts,
-        truncation=True,
-        padding="max_length",
-        max_length=160,
-        return_tensors="tf",
-    )
-
-    inputs = {key: tensor for key, tensor in encodings.items()}
-
-    if labels is not None:
-        label_tensor = tf.convert_to_tensor(labels, dtype=tf.float32)
-        dataset = tf.data.Dataset.from_tensor_slices((inputs, label_tensor))
-    else:
-        dataset = tf.data.Dataset.from_tensor_slices(inputs)
-
-    return dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
-
-
-def main() -> None:
-    args = parse_args()
-    configure_logging()
-
-    df = pd.read_csv(args.input)
-    if "text_translate" not in df.columns:
-        raise KeyError("Expected 'text_translate' column with tweet text.")
-
-    labels = prepare_labels(df)
-    texts = df["text_translate"].astype(str).tolist()
-
-    train_texts, val_texts, train_labels, val_labels = train_test_split(
-        texts,
-        labels,
-        test_size=0.2,
-        random_state=42,
-    )
-
-    tokenizer = BertTokenizer.from_pretrained("bert-large-uncased")
-    model = TFBertForSequenceClassification.from_pretrained(
-        "bert-large-uncased",
-        num_labels=len(TOPICS),
-    )
-
-    train_dataset = build_dataset(tokenizer, train_texts, train_labels, args.batch_size)
-    val_dataset = build_dataset(tokenizer, val_texts, val_labels, args.batch_size)
-
-    optimizer = tf.keras.optimizers.Adam(learning_rate=args.learning_rate)
-    loss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-    metrics = [
-        tf.keras.metrics.BinaryAccuracy(name="binary_accuracy"),
-        tf.keras.metrics.Precision(name="precision"),
-        tf.keras.metrics.Recall(name="recall"),
-    ]
-
-    model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
-
-    callbacks = [
-        tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=3,
-            restore_best_weights=True,
-        )
-    ]
-
-    history = model.fit(
-        train_dataset,
-        validation_data=val_dataset,
-        epochs=args.epochs,
-        callbacks=callbacks,
-    )
-
-    eval_results = model.evaluate(val_dataset, return_dict=True)
-    logging.info("Evaluation: %s", eval_results)
-
-    args.model_dir.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(args.model_dir)
-    tokenizer.save_pretrained(args.model_dir)
-
-    history_df = pd.DataFrame(history.history)
-    history_path = args.reports_dir / "training_history.csv"
-    history_path.parent.mkdir(parents=True, exist_ok=True)
-    history_df.to_csv(history_path, index=False)
-
-    val_probs = tf.nn.sigmoid(model.predict(val_dataset).logits).numpy()
-    val_preds = (val_probs >= 0.5).astype(int)
-
-    comparison = pd.DataFrame(
-        {
-            "tweet": val_texts,
-            "true_labels": val_labels,
-            "predicted_labels": val_preds.tolist(),
-            "probabilities": val_probs.tolist(),
-        }
-    )
-    comparison_path = args.reports_dir / "validation_comparison.csv"
-    comparison.to_csv(comparison_path, index=False)
-
-
-if __name__ == "__main__":
-    main()
+log_file.close()
+error_log_file.close()
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+print(f"Saved model to {model_path} and tokenizer to {tokenizer_path}")

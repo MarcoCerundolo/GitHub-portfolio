@@ -23,8 +23,7 @@ The aim of the project was to measure group differences between groups in a high
 Raw Twitter data used in this project is not included in the repository due to property restrictions.
 
 However:
-- A small sample is provided in `data/raw/sample_tweets.csv` to illustrate the format.
-- The human-labeled test set (285 tweets) is included in `data/processed/sampled_tweets_by_topic.csv`.
+- A sample of 285 tweets which have been classified by the model and then human-labeled are included in `data/processed/sampled_tweets_by_topic.csv`.
 - If an input dataset is provided then all preprocessing and labeling steps are fully reproducible via the scripts in `src/`.
 
 Source: public API (prior to Musk ownership)
@@ -39,6 +38,7 @@ I defined 19 topic categories and then used ChatGPT with a structured prompt to 
 ## Model Architecture
 
 Base model: bert-base-uncased
+Model gets trained on 4/5 of the tweets and gets evaluated on 1/5 of the tweets.
 To avoid overfitting I use early stopping with a patience of 3 epochs.
 
 ## Evaluation Method
@@ -53,29 +53,29 @@ For each topic I randomly sampled 15 tweets, from the classified final dataset, 
   
 - The [topic frequency overview](reports/topic_frequency.pdf) charts the distribution across all 20 topics (plus a `no_topic` catch-all) over the 3.7M tweet corpus, underscoring the class imbalance with counts on the order of 10^6 tweets for the largest categories.
 
-## Directory Overview
+## Folder Layout
 
 ```
-tweet_topic_classifier/
+tweet_topic_classifier2/
 ├── data/
-│   ├── raw/           # Only contains sample of source tweets 
-│   ├── interim/   
-│   └── processed/    
-├── models/            # Saved BERT checkpoints
-├── reports/           # Summary PDFs
-├── src/tweet_classifier/
-│   ├── gpt_label_tweets.py
-│   ├── build_dummy_labels.py
-│   ├── train_bert_classifier.py
-│   ├── run_inference.py
-│   ├── summarise_predictions.py
-│   └── evaluate_model_performance.py
-└── requirements.txt
+│   ├── raw/          # Input CSV files (example: df_full_july_tweets.csv)
+│   ├── interim/      # Spare folder for working files
+│   └── processed/    # Outputs from each stage of the pipeline
+├── logs/             # Plain text logs written by each script
+├── models/           # Saved TensorFlow BERT checkpoints
+├── reports/          # PDF summaries (topic frequencies, confusion matrices, etc.)
+└── src/tweet_classifier/
+    ├── gpt_label_tweets.py
+    ├── build_dummy_labels.py
+    ├── train_bert_classifier.py
+    ├── run_inference.py
+    ├── topic_frequency.py
+    └── evaluate_model_performance.py
 ```
 
 ## How to Run
 
-### 1. Environment Setup
+## Environment Setup
 
 ```bash
 python3 -m venv .venv
@@ -84,75 +84,42 @@ pip install -r requirements.txt
 export OPENAI_API_KEY="sk-..."  # needed for GPT labelling
 ```
 
-### 2. Label Tweets with GPT
+## Running the Pipeline
 
-```bash
-python src/tweet_classifier/gpt_label_tweets.py \
-  --input data/raw/raw_tweets.csv \ 
-  --output data/processed/labelled_tweets.csv # note: input data not included, default is sample 
-```
-python3 src/tweet_classifier/gpt_label_tweets.py \
-  --input data/raw/sample_tweets.csv \
-  --output data/processed/labelled_tweets.csv 
+1. **Label tweets with GPT**
+   ```bash
+   python3 src/tweet_classifier/gpt_label_tweets.py
+   ```
+   Reads `data/raw/df_full_july_tweets.csv` and saves `data/processed/labelled_tweets_100000.csv`.
 
-The script stores GPT output in a `gpt_finetuned` column, mirroring the original pipeline.
+2. **Generate dummy topic columns**
+   ```bash
+   python3 src/tweet_classifier/build_dummy_labels.py
+   ```
+   Creates `data/processed/gpt_dummy_labels_100000.csv`.
 
-### 3. Build Dummy Topic Columns
+3. **Train the BERT model**
+   ```bash
+   python3 src/tweet_classifier/train_bert_classifier.py
+   ```
+   Saves the fine-tuned model to `models/model_100000` and confusion matrices to `reports/confusion_matrices_100000.pdf`.
 
-```bash
-python3 src/tweet_classifier/build_dummy_labels.py \
-  --input data/processed/labelled_tweets.csv \
-  --output data/processed/gpt_dummy_labels.csv
-```
+4. **Run inference on all tweets**
+   ```bash
+   python3 src/tweet_classifier/run_inference.py
+   ```
+   Produces `data/processed/inference_tweets_100000.csv`.
 
-Each topic becomes a binary column that feeds directly into the BERT model.
+5. **Summarise predictions**
+   ```bash
+   python3 src/tweet_classifier/topic_frequency.py
+   ```
+   Creates the topic-frequency bar chart and saves it as `reports/topic_frequency.pdf`.
 
-### 4. Train the BERT Classifier
+6. **Evaluate model performance**
+   ```bash
+   python3 src/tweet_classifier/evaluate_model_performance.py
+   ```
+   Reads the manually labelled sample (`data/processed/sampled_tweets_by_topic.csv`) and writes an overview to `reports/model_evaluation.pdf`.
 
-```bash
-python3 src/tweet_classifier/train_bert_classifier.py \
-  --input data/processed/gpt_dummy_labels.csv \
-  --model-dir models/bert_topic_classifier \
-  --reports-dir reports \
-  --epochs 5 \
-  --batch-size 16
-```
-
-Outputs:
-- Saved model/tokenizer under `models/bert_topic_classifier`
-- `reports/training_history.csv`
-- `reports/validation_comparison.csv`
-
-### 5. Run Inference on New Tweets
-
-```bash
-python3 src/tweet_classifier/run_inference.py \
-  --input data/raw/new_tweets.csv \
-  --model-dir models/bert_topic_classifier \
-  --output data/processed/inference_results.csv
-```
-
-Predictions include per-topic probabilities plus multi-hot labels.
-
-### 6. Summarise Predictions
-
-```bash
-python3 src/tweet_classifier/summarise_predictions.py \
-  --input data/processed/inference_results.csv \
-  --sample-output data/processed/topic_samples.csv \
-  --report reports/topic_frequency.pdf
-```
-
-Generates a human-readable sample for QA and a topic distribution chart/table.
-
-### 7. Evaluate Model Performance
-
-```bash
-python3 src/tweet_classifier/evaluate_model_performance.py \
-  --input data/processed/sampled_tweets_by_topic.csv \
-  --output reports/model_evaluation.pdf
-```
-
-This script computes aggregate metrics (micro/macro precision, recall, F1, subset accuracy) and per-topic scores, then compiles the results alongside confusion matrices for every topic into a clean PDF.
-
-
+Each script writes its own log file under `logs/` so I can check progress when running long jobs.

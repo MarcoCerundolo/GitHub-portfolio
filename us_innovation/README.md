@@ -22,7 +22,7 @@ The raw data is not included in the repo because the patent data is private. How
 
 ## Results & Insights
 
-- Event study suggests that the Reagan spending surge had a long-run effect on innovation [differences-in-differences](output/figures/trendplot_num_final.pdf).
+- Event study suggests that the Reagan spending surge had a long-run effect on innovation [differences-in-differences](output/figures/trendplot_num_final.png).
 
 - Shift-share IV estimates county patenting elasticity to procurement of 0.11% (sig. 1%) [thesis pdf](thesis_pdf/Thesis.pdf).
 

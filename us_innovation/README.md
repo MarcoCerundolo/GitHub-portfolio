@@ -14,9 +14,9 @@ The goal of the project is to assess the causal impact of the surge in Cold War 
 
 ## Dataset
 
-1) Universe of US patents (private source)
-2) All procurment contracts by the US Department of Defence (DoD) 1966-2003 (public records)
-3) County-level descriptive variables from a range of sources (public records)
+1) Universe of US patents [private source]
+2) All procurment contracts by the US Department of Defence (DoD) 1966-2003 [public records]
+3) County-level descriptive variables from a range of sources [public records]
 
 The raw data is not included in the repo because the patent data is private. However, intermediate datasets are included
 

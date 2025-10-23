@@ -14,7 +14,7 @@ Here you’ll find projects that showcase some of my skills in data science.
 |                                                         |                                    |
 | Causal Effect of High Tech Procurement on US Innovation | Differences-in-Differences         |
 |                                                         | Instrumental Variables             |
-|                                                         |                                    |
+|                                                         | Heterogneity Analysis              |
 |                                                         |                                    |
 
 ---

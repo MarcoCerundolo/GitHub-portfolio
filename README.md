@@ -12,7 +12,7 @@ Here you’ll find projects that showcase some of my skills in data science.
 |                                                         | End-to-end reproducible pipeline   |
 |                                                         | Evaluating an ML model             |
 |                                                         |                                    |
-| Causal Effect of High Tech Procurement on US Innovation | Differences-in-Differences         |
+| US Innovation                                           | Differences-in-Differences         |
 |                                                         | Instrumental Variables             |
 |                                                         | Heterogneity Analysis              |
 |                                                         |                                    |

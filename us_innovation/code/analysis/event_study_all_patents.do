@@ -63,7 +63,7 @@ gen treatment = after * treated
 
 
  * Run DiD regression
-
+// add controls?
 xtdidregress (num_patents) (treatment), group(county_id) time(fyear)
 
 //outreg2 using "$output/outreg/event_study/xtdidregress_num.tex", lab dec(3) nocons ///

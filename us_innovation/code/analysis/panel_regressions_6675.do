@@ -1,54 +1,16 @@
 clear all 
 
-global path "/Users/marcocerundolo/Dropbox/DL_marco"
+global path "GitHub-portfolio/us_innovation"
 
-global output "$path/output/outreg/regressions/baseline"
+global output "$path/output/tables"
 
-use "$path/output/intermediate/panel/built5.dta"
-
-******************
-*** FIRST STAGE****
-******************
-
-preserve
-
-keep if semi_intens == 1 & fyear > 1975 & ltotal_dollars> 0 & lspending_6675_iv > 0
-
-quietly sum lspending_6675_iv, d
-return list
-gen lspending_6675_iv_mean = r(mean)
-
-replace lspending_6675_iv = lspending_6675_iv - lspending_6675_iv_mean
-
-* First, residualize ltotal_dollars on controls and fixed effects:
-reghdfe ltotal_dollars if semi_intens==1 & fyear > 1975 & ltotal_dollars> 0, absorb(fyear) cluster(county_fips) resid
-predict resid_lt, resid
-
-* Next, residualize spending_iv on the same controls and fixed effects:
-reghdfe lspending_6675_iv if semi_intens==1 & fyear > 1975 & ltotal_dollars> 0, absorb(fyear) cluster(county_fips) resid
-predict resid_sp, resid
-
-* Now, plot the residuals:
-twoway scatter resid_lt resid_sp || lfit resid_lt resid_sp , ///
-    title("Partial Relationship: ltotal_dollars vs. spending_iv") ///
-    ytitle("Residuals of ltotal_dollars") ///
-    xtitle("Residuals of spending_iv")	
-	
-twoway scatter ltotal_dollars lspending_6675_iv, msize(tiny) || lfit ltotal_dollars lspending_6675_iv, ///
-	xtitle("IV") ///
-	ytitle("log(spending)") ///
-	 legend(off)
-
-graph export "$path/output/figures/descriptives/iv.png", replace
-
-restore
+use "$path/data/processed/built5.dta"
 
 ******************
 *** SECOND STAGE ****
 ******************
 
 egen state_yr = group(state fyear)
-
 
 *** Weighted Patents - Simple spec. - OLS ***
 

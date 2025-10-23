@@ -1,12 +1,12 @@
 clear all
 
-global path "/Users/marcocerundolo/Dropbox/DL_marco"
+global path "GitHub-portfolio/us_innovation"
 
-global output "$path/output"
+global output "$path/output/figures"
 
-use "$path/output/intermediate/panel/built.dta"
+use "$path/data/processed/built.dta"
 
-merge 1:1 county_fips fyear using "$path/output/intermediate/defcon_patent_merge_county_year_final.dta"
+merge 1:1 county_fips fyear using "$path/data/processed/defcon_patent_merge_county_year_final.dta"
 
 drop if fyear < 1965 | fyear > 2003
 
@@ -63,38 +63,31 @@ gen treatment = after * treated
 
 
  * Run DiD regression
-// add controls?
-xtdidregress (num_patents) (treatment), group(county_id) time(fyear)
 
-//outreg2 using "$output/outreg/event_study/xtdidregress_num.tex", lab dec(3) nocons ///
-//		title(Diff-in-Diff) ctitle(Number of Patents)
-		
-xtdidregress (w_cites_sub) (treatment), group(county_id) time(fyear)	
-		
-erase "$output/outreg/event_study/xtdidregress_num_final.txt"
+xtdidregress (num_patents) (treatment), group(county_id) time(fyear)
 
 estat ptrends // test
 
 * Generate the trend plot
 estat trendplot, ///
-    ytitle("Citation Weighted Patent Count") ///
+    ytitle("Patent Count") ///
     xtitle("Year") ///
 	xlabel(1965(5)2005) ///
     legend(label(1 "Treated") label(2 "Control")) ///
 	notitle
 	
-// spec that works: Treat = abs/89/med, 1965-2003
+// spec that works: treat = abs/89/med, 1965-2003
 	
-graph export "$output/figures/event_study/trendplot_cit_final.png", replace
+graph export "$output/trendplot_num_final.png", replace
 	
 // no table 	
 estat grangerplot, base(1981) ///
 	xtitle("year") 
 
 	
-graph export "$output/figures/event_study/grangerplot_num_final_citation_w.png", replace
+graph export "$output/grangerplot_num_final.png", replace
 
-outreg2 using "$output/outreg/event_study/grangerplot_num_final.tex", lab dec(3) nocons ///
+outreg2 using "$output/grangerplot_num_final.tex", lab dec(3) nocons ///
 		title(Event Study Granger Plot) ctitle(Number of Patents)
-erase "$output/outreg/event_study/grangerplot_num_final.txt"
+erase "$output/grangerplot_num_final.txt"
 

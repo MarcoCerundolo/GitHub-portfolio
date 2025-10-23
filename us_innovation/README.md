@@ -20,13 +20,27 @@ The goal of the project is to assess the causal impact of the surge in Cold War 
 
 The raw data is not included in the repo because the patent data is private. However, intermediate datasets are included
 
+## Methodology
+
+To read about the methodology in more detail refer to the [thesis pdf](thesis_pdf/Thesis.pdf).
+
+ - Difference-in-differences: the treatment year is when Reagan is first inaugrated into office. The treated counties are those who experience above the median level increase in county level spending in the years immediately prior to immediatley post his election.
+
+The estimates from this approach suffer from omitted variable bias since treatment status is correlated with innnovative potential and therefore I use an IV analysis
+
+ - Instrumental Variables: I use a shift-share instrument where the shares capture the specialisation of each county in different technological categories and the shocks capture exogenous changes to which technologies the DoD primarily invests in.
+  
+ - Heterogeneity Analysis: I construct a measure of local firm competition and I run the analysis on counties in distinct quartiles of this index.
+
 ## Results & Insights
 
-- Event study suggests that the Reagan spending surge had a long-run effect on innovation [long-run effect on innovation](output/figures/trendplot_num_final.png).
+To read more about the results and their interpretation refer to the [thesis pdf](thesis_pdf/Thesis.pdf).
 
-- [Shift-share IV estimates](thesis_pdf/Thesis.pdf) county patenting elasticity to procurement of 0.11% (sig. 1%).
+- Event study suggests that the Reagan spending surge had a [long-run effect on innovation](output/figures/trendplot_num_final.png).
 
-- [Heterogeneity analysis](output/figures/hhi.png): treatment effect larger in counties with more local competition . This is consistent with the presence of local knowledge spillovers. 
+- [Shift-share IV estimates](thesis_pdf/Thesis.pdf) that county patenting has an elasticity to procurement spending of 0.11% (sig. 1%).
+
+- [Heterogeneity analysis](output/figures/hhi.png): treatment effect is larger in counties with a higher degree of local competition . This is consistent with the presence of local knowledge spillovers. 
 
 
 ## Folder Layout
